@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📚 Learn</title>
     <link rel="stylesheet" href="./styles.css">
+    <!-- Add LZString for compression -->
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -45,8 +47,19 @@
                 </div>
                 
                 <div id="import-tab" class="tab-content active">
-                    <p>Import a JSON file with your terms:</p>
-                    <input type="file" id="fileInput" accept=".json,.txt">
+                    <div class="import-methods">
+                        <div class="import-method">
+                            <h4>Import from File</h4>
+                            <input type="file" id="fileInput" accept=".json,.txt">
+                        </div>
+                        <div class="import-method">
+                            <h4>Import from Link</h4>
+                            <div class="link-import">
+                                <input type="text" id="linkInput" placeholder="Paste a shared set link here">
+                                <button class="button button-primary" onclick="importFromLink()">Import</button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="example-format">
                         <p>Expected JSON format:</p>
                         <pre style="text-align:left;">[
@@ -151,5 +164,8 @@ goodbye	a farewell	g_____</pre>
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="./script.js"></script>
+    <script src="./script2.js"></script>
+    <script src="./script3.js"></script>
+    <script src="./script4.js"></script>
 </body>
 </html>
