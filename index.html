@@ -60,15 +60,20 @@
                             </div>
                         </div>
                     </div>
-                    <div class="example-format">
-                        <p>Expected JSON format:</p>
-                        <pre style="text-align:left;">[
+                    <div class="format-help">
+                        <button class="info-button" onclick="toggleFormatHelp()">
+                            ℹ️ Show Format Examples
+                        </button>
+                        <div id="formatExamples" class="info-content" style="display: none;">
+                            <p>Expected JSON format:</p>
+                            <pre>[
   {"term": "hello", "definition": "a greeting", "hint": "h____"},
   {"term": "goodbye", "definition": "a farewell", "hint": "g_____"}
 ]</pre>
-                        <p>Or tab-delimited text:</p>
-                        <pre style="text-align:left;">hello	a greeting	h____
+                            <p>Or tab-delimited text:</p>
+                            <pre>hello	a greeting	h____
 goodbye	a farewell	g_____</pre>
+                        </div>
                     </div>
                 </div>
                 

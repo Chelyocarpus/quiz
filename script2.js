@@ -169,7 +169,7 @@ function checkAnswer() {
     };
 
     if (answer === correctAnswer) {
-        // Correct answer on first try
+        // Correct answer
         elements.feedback.innerHTML = `<span class="correct">Correct!</span>`;
         markComplete(currentTerm);
         
@@ -179,6 +179,11 @@ function checkAnswer() {
         elements.skipBtn.style.display = 'none';
         elements.nextBtn.style.display = 'inline-block';
         elements.overrideBtn.style.display = 'none';
+
+        // Automatically advance to next question after delay
+        setTimeout(() => {
+            nextQuestion();
+        }, 1000); // 1 second delay
     } else {
         // Wrong answer - show feedback and require retyping
         elements.feedback.innerHTML = `<span class="incorrect">Incorrect. Please type: ${currentTerm.term}</span>`;

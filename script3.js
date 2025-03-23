@@ -501,3 +501,40 @@ async function startStudyingSet(name) {
     
     ToastSystem.show(`Started studying "${name}" with ${words.length} terms`, 'success');
 }
+
+function updateTermsList() {
+    const termsList = document.getElementById('termsList');
+    const startButton = document.getElementById('startCreatedSetBtn');
+    
+    if (createdTerms.length === 0) {
+        termsList.innerHTML = '<p id="noTermsMessage">📝 No terms added yet.</p>';
+        startButton.disabled = true;
+        return;
+    }
+    
+    startButton.disabled = false;
+    
+    // Clear the list first
+    termsList.innerHTML = '';
+    
+    createdTerms.forEach((item, index) => {
+        const termElement = document.createElement('div');
+        termElement.className = 'term-item';
+        termElement.ondblclick = () => editTerm(index);
+        termElement.innerHTML = `
+            <div class="term-content">
+                <span class="term-number">${index + 1}.</span>
+                <div class="term-text">
+                    <div class="term-label">Term:</div>
+                    <div class="term-value">${item.term}</div>
+                    <div class="definition-label">Definition:</div>
+                    <div class="definition-value">${item.definition}</div>
+                </div>
+            </div>
+            <div class="term-actions">
+                <button onclick="editTerm(${index})" title="Edit (double-click term)">✏️</button>
+                <button onclick="deleteTerm(${index})" title="Delete">❌</button>
+            </div>`;
+        termsList.appendChild(termElement);
+    });
+}

@@ -455,19 +455,26 @@ input[type="file"] {
 
 .form-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 15px;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
 .form-row input {
-    flex: 1;
-    padding: 8px 12px;
+    width: 100%;
+    padding: 12px;
     border-radius: 4px;
-    border: 1px solid var(--secondary-color);
+    border: 1px solid var(--border-color);
     background-color: var(--card-bg);
     color: var(--text-color);
+    min-height: 50px;
+    font-size: 1rem;
 }
+
+/* Adjust specific field heights */
+#termInput { min-height: 50px; }
+#definitionInput { min-height: 50px; } /* Much taller for definitions */
+#hintInput { min-height: 50px; }
 
 .creator-controls {
     display: flex;
@@ -492,6 +499,8 @@ input[type="file"] {
     padding: 8px 5px;
     border-bottom: 1px solid var(--border-color);
     align-items: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .term-item:last-child {
@@ -516,6 +525,36 @@ input[type="file"] {
     cursor: pointer;
     color: var(--text-color);
     font-size: 0.9rem;
+}
+
+.term-item:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+
+.dark-mode .term-item:hover {
+    background-color: rgba(255,255,255,0.03);
+}
+
+.term-text {
+    flex: 1;
+    text-align: left;
+    padding: 0 10px;
+}
+
+.term-label, .definition-label {
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.term-value, .definition-value {
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.term-value {
+    font-weight: 500;
 }
 
 .quiz-controls {
@@ -978,4 +1017,79 @@ input[type="file"] {
     .link-import {
         flex-direction: column;
     }
+}
+
+.copyable {
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.copyable:hover {
+    color: var(--primary-color);
+}
+
+.copyable:hover::after {
+    content: '📋';
+    font-size: 0.8em;
+    position: absolute;
+    top: -8px;
+    right: -12px;
+    opacity: 0.7;
+}
+
+.term-number {
+    color: var(--primary-color);
+    margin-right: 8px;
+    font-weight: 500;
+    min-width: 24px;
+    display: inline-block;
+}
+
+.term-content {
+    display: flex;
+    align-items: center;
+}
+
+.format-help {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.info-button {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.info-button:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.info-content {
+    margin-top: 10px;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: var(--secondary-color);
+    border-left: 4px solid var(--primary-color);
+}
+
+.dark-mode .info-content {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.info-content pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.dark-mode .info-content pre {
+    background-color: rgba(0, 0, 0, 0.2);
 }

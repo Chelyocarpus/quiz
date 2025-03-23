@@ -23,11 +23,10 @@ async function showSharedSetDialog(shareData) {
         // Create a more visually appealing dialog
         DialogSystem.elements.title.textContent = '📥 Shared Set Received';
         
-        // Get a sample of terms to show (up to 3)
+        // Get a sample of terms to show (up to 3), but only show the terms
         const sampleTerms = shareData.terms.slice(0, 3).map(t => 
             `<div class="sample-term">
                 <strong>${t.term}</strong>
-                <span>${t.definition.length > 60 ? t.definition.substring(0, 60) + '...' : t.definition}</span>
             </div>`
         ).join('');
         

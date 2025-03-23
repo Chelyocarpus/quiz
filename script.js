@@ -112,6 +112,20 @@ function showHint() {
     }
 }
 
+// Add the toggleFormatHelp function
+function toggleFormatHelp() {
+    const examples = document.getElementById('formatExamples');
+    const button = document.querySelector('.info-button');
+    
+    if (examples.style.display === 'none') {
+        examples.style.display = 'block';
+        button.textContent = '❌ Hide Format Examples';
+    } else {
+        examples.style.display = 'none';
+        button.textContent = 'ℹ️ Show Format Examples';
+    }
+}
+
 // Set up event listeners when the page loads
 document.addEventListener('DOMContentLoaded', function() {
     // Clear URL parameters on page load/refresh
@@ -253,6 +267,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Check if there's a shared set in the URL
     checkForSharedSet();
+    
+    // Add keyboard shortcuts for term creation
+    document.addEventListener('keydown', function(e) {
+        // Alt+N for new term (when in create tab)
+        if (e.altKey && e.key === 'n' && document.getElementById('create-tab').classList.contains('active')) {
+            e.preventDefault();
+            document.getElementById('termInput').focus();
+        }
+
+        // Tab between inputs in create form
+        if (e.key === 'Tab' && document.activeElement.matches('#termInput, #definitionInput, #hintInput')) {
+            const inputs = ['termInput', 'definitionInput', 'hintInput'];
+            const currentIndex = inputs.indexOf(document.activeElement.id);
+            if (currentIndex === 2 && !e.shiftKey) {
+                e.preventDefault();
+                addTerm();
+            }
+        }
+    });
+
+    // Auto-save created terms every minute
+    setInterval(() => {
+        if (createdTerms.length > 0) {
+            localStorage.setItem('quizletCreatedTermsDraft', JSON.stringify(createdTerms));
+        }
+    }, 60000);
+
+    // Load auto-saved draft if exists
+    const savedDraft = localStorage.getItem('quizletCreatedTermsDraft');
+    if (savedDraft && !localStorage.getItem('quizletCreatedTerms')) {
+        createdTerms = JSON.parse(savedDraft);
+        updateTermsList();
+        ToastSystem.show('Restored unsaved terms from last session', 'info');
+    }
 });
 
 function switchTab(tabId) {
@@ -286,13 +334,29 @@ async function addTerm() {
     const term = document.getElementById('termInput').value.trim();
     const definition = document.getElementById('definitionInput').value.trim();
     const hint = document.getElementById('hintInput').value.trim();
+    const addButton = document.querySelector('button[onclick="addTerm()"]');
+    const isEditing = addButton?.dataset.isEditing === 'true';
+    const editIndex = document.getElementById('termInput').dataset.editIndex;
     
     if (term && definition) {
-        createdTerms.push({
+        const newTerm = {
             term: term,
             definition: definition,
             hint: hint || generateHint(term)
-        });
+        };
+
+        if (isEditing && editIndex) {
+            // Update existing term
+            createdTerms[editIndex] = newTerm;
+            
+            // Reset edit mode
+            addButton.innerHTML = '➕ Add Term';
+            addButton.dataset.isEditing = 'false';
+            delete document.getElementById('termInput').dataset.editIndex;
+        } else {
+            // Add new term
+            createdTerms.push(newTerm);
+        }
         
         // Clear input fields
         document.getElementById('termInput').value = '';
@@ -306,8 +370,8 @@ async function addTerm() {
         updateTermsList();
         localStorage.setItem('quizletCreatedTerms', JSON.stringify(createdTerms));
         
-        // Show toast instead of alert
-        ToastSystem.show('Term added successfully!', 'success');
+        // Show appropriate toast message
+        ToastSystem.show(isEditing ? 'Term updated successfully!' : 'Term added successfully!', 'success');
     } else {
         await showAlert('Please enter both a term and a definition.', 'Missing Information');
     }
@@ -362,10 +426,15 @@ function editTerm(index) {
     document.getElementById('definitionInput').value = term.definition;
     document.getElementById('hintInput').value = term.hint || '';
     
-    // Delete the term after loading into input fields
-    createdTerms.splice(index, 1);
-    updateTermsList();
-    localStorage.setItem('quizletCreatedTerms', JSON.stringify(createdTerms));
+    // Store the index being edited
+    document.getElementById('termInput').dataset.editIndex = index;
+    
+    // Change the add button text to indicate edit mode
+    const addButton = document.querySelector('button[onclick="addTerm()"]');
+    if (addButton) {
+        addButton.innerHTML = '💾 Save Changes';
+        addButton.dataset.isEditing = 'true';
+    }
     
     // Focus on the term input for editing
     document.getElementById('termInput').focus();
