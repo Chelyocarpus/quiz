@@ -242,6 +242,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     addQuestionCounterStyles();
+    
+    // Check for active session and update continue button
+    updateContinueSessionButton();
 });
 
 function switchTab(tabId) {
@@ -1017,49 +1020,158 @@ function importWords(event) {
     reader.onload = function(e) {
         try {
             const contents = e.target.result;
-            const lines = contents.split('\n');
-            words = [];
+            let parsedTerms = [];
             
-            lines.forEach(line => {
-                const parts = line.split('\t');
-                if (parts.length >= 2) {
-                    const term = parts[0].trim();
-                    const definition = parts[1].trim();
-                    const hint = parts[2] ? parts[2].trim() : generateHint(term);
-                    
-                    if (term && definition) {
-                        words.push({
-                            term: term,
-                            definition: definition,
-                            hint: hint
-                        });
-                    }
-                }
-            });
-            
-            if (words.length > 0) {
-                originalWordsList = [...words];
-                incorrectWords = [];
-                roundWrongAnswers = [];
-                completed = 0;
-                totalCorrect = 0;
-                currentRound = 1;
-                currentIndex = 0;
+            // Try to parse as JSON first
+            try {
+                // Parse the JSON content
+                const jsonData = JSON.parse(contents);
                 
-                showQuizSection();
-                updateProgress();
-                loadQuestion();
-                saveToLocalStorage();
+                if (Array.isArray(jsonData) && jsonData.length > 0) {
+                    // Process JSON array format
+                    parsedTerms = jsonData.map(item => ({
+                        term: item.term || '',
+                        definition: item.definition || '',
+                        hint: item.hint || generateHint(item.term || '')
+                    }));
+                } else {
+                    throw new Error("Invalid JSON format");
+                }
+            } catch (jsonError) {
+                console.log("Not valid JSON, trying tab-delimited format");
+                
+                // Fallback to tab-delimited format
+                const lines = contents.split('\n');
+                parsedTerms = [];
+                
+                lines.forEach(line => {
+                    const parts = line.split('\t');
+                    if (parts.length >= 2) {
+                        const term = parts[0].trim();
+                        const definition = parts[1].trim();
+                        const hint = parts[2] ? parts[2].trim() : generateHint(term);
+                        
+                        if (term && definition) {
+                            parsedTerms.push({
+                                term: term,
+                                definition: definition,
+                                hint: hint
+                            });
+                        }
+                    }
+                });
+            }
+            
+            if (parsedTerms.length > 0) {
+                // Ask user if they want to save the imported terms
+                showImportOptions(parsedTerms);
             } else {
-                alert('No valid terms found in the file.');
+                showAlert('No valid terms found in the file. Please check the format.', 'Import Error');
             }
         } catch (error) {
             console.error('Error parsing file:', error);
-            alert('Error parsing file. Please check the format.');
+            showAlert('Error parsing file: ' + error.message, 'Import Error');
         }
     };
     
     reader.readAsText(file);
+}
+
+// Add a new function to handle import options
+async function showImportOptions(parsedTerms) {
+    const importMessage = `Successfully parsed ${parsedTerms.length} terms. What would you like to do?`;
+    
+    // Create custom buttons for the dialog
+    DialogSystem.elements = DialogSystem.elements || DialogSystem.init();
+    
+    // Show dialog with multiple options
+    DialogSystem.elements.title.textContent = 'Import Successful';
+    DialogSystem.elements.message.textContent = importMessage;
+    DialogSystem.elements.input.style.display = 'none';
+    DialogSystem.elements.cancelBtn.style.display = 'inline-block';
+    DialogSystem.elements.cancelBtn.textContent = 'Cancel';
+    DialogSystem.elements.confirmBtn.textContent = 'Start Quiz Now';
+    
+    // Add a new button for saving to created terms
+    const saveButton = document.createElement('button');
+    saveButton.className = 'button button-primary';
+    saveButton.textContent = 'Save to My Sets';
+    saveButton.style.marginRight = '10px';
+    
+    // Insert the save button before the confirm button
+    DialogSystem.elements.confirmBtn.parentNode.insertBefore(
+        saveButton, 
+        DialogSystem.elements.confirmBtn
+    );
+    
+    // Create a promise to handle the dialog result
+    const dialogPromise = new Promise((resolve) => {
+        // Set up button actions
+        DialogSystem.elements.cancelBtn.onclick = () => {
+            resolve('cancel');
+            DialogSystem.elements.overlay.classList.remove('active');
+            // Remove the extra button
+            saveButton.remove();
+        };
+        
+        DialogSystem.elements.confirmBtn.onclick = () => {
+            resolve('start');
+            DialogSystem.elements.overlay.classList.remove('active');
+            // Remove the extra button
+            saveButton.remove();
+        };
+        
+        saveButton.onclick = () => {
+            resolve('save');
+            DialogSystem.elements.overlay.classList.remove('active');
+            // Remove the extra button
+            saveButton.remove();
+        };
+    });
+    
+    // Show the dialog
+    DialogSystem.elements.overlay.classList.add('active');
+    
+    // Handle the user's choice
+    const choice = await dialogPromise;
+    
+    switch(choice) {
+        case 'start':
+            // Start quiz immediately (original behavior)
+            words = parsedTerms.map(term => ({...term, correct: false}));
+            originalWordsList = [...words];
+            incorrectWords = [];
+            roundWrongAnswers = [];
+            completed = 0;
+            totalCorrect = 0;
+            currentRound = 1;
+            currentIndex = 0;
+            
+            showQuizSection();
+            updateProgress();
+            loadQuestion();
+            saveToLocalStorage();
+            
+            ToastSystem.show(`Imported ${words.length} terms successfully!`, 'success');
+            break;
+            
+        case 'save':
+            // Save to created terms
+            createdTerms = [...parsedTerms];
+            updateTermsList();
+            localStorage.setItem('quizletCreatedTerms', JSON.stringify(createdTerms));
+            
+            // Switch to the create tab
+            switchTab('create-tab');
+            
+            ToastSystem.show(`Added ${parsedTerms.length} terms to your set!`, 'success');
+            break;
+            
+        case 'cancel':
+            // Do nothing
+            ToastSystem.show('Import cancelled', 'info');
+            break;
+    }
 }
 
 function createRoundSummaryElement() {
@@ -1195,7 +1307,8 @@ function loadSavedSets() {
                 <p>${termCount} terms · Saved on ${date}</p>
             </div>
             <div class="saved-set-actions">
-                <button onclick="loadSavedSet('${name}')" class="button button-small">Load</button>
+                <button onclick="startStudyingSet('${name}')" class="button button-small button-primary">🚀 Study</button>
+                <button onclick="loadSavedSet('${name}')" class="button button-small">Edit</button>
                 <button onclick="exportSavedSet('${name}')" class="button button-small">Export</button>
                 <button onclick="deleteSavedSet('${name}')" class="button button-small button-danger">Delete</button>
             </div>
@@ -1203,6 +1316,44 @@ function loadSavedSets() {
     }
     
     savedSetsContainer.innerHTML = html;
+}
+
+/**
+ * Start studying with a saved set
+ * @param {string} name - The name of the saved set
+ */
+function startStudyingSet(name) {
+    const savedSets = JSON.parse(localStorage.getItem('quizletSavedSets') || '{}');
+    if (!savedSets[name]) {
+        ToastSystem.show('Set not found!', 'error');
+        return;
+    }
+    
+    // Get the terms from the saved set
+    const savedTerms = savedSets[name].terms;
+    
+    // Clear previous state
+    words = savedTerms.map(term => ({...term, correct: false}));
+    originalWordsList = [...words];
+    incorrectWords = [];
+    roundWrongAnswers = [];
+    wrongAnswers.clear();
+    correctAnswers.clear();
+    
+    // Reset counters
+    completed = 0;
+    totalCorrect = 0;
+    currentRound = 1;
+    currentIndex = 0;
+    
+    // Show quiz section
+    showQuizSection();
+    updateProgress();
+    loadQuestion();
+    saveToLocalStorage();
+    
+    // Notify the user
+    ToastSystem.show(`Started studying "${name}" with ${words.length} terms`, 'success');
 }
 
 async function loadSavedSet(name) {
@@ -1239,7 +1390,7 @@ async function exportSavedSet(name) {
     // Create and click a download link
     const a = document.createElement('a');
     a.href = url;
-    a.download = `quizlet_set_${name.replace(/[^a-z0-9]/gi, '_')}.json`;
+    a.download = `quiz_set_${name.replace(/[^a-z0-9]/gi, '_')}.json`;
     document.body.appendChild(a);
     a.click();
     
@@ -1437,3 +1588,185 @@ async function showConfirm(message, title = 'Confirm') {
 async function showPrompt(message, defaultValue = '', title = 'Input Required') {
     return await DialogSystem.prompt(message, defaultValue, title);
 }
+
+/**
+ * Reset the application to the overview/main menu
+ */
+function resetToOverview() {
+    // Only perform the reset if we're currently in quiz mode
+    const quizSection = document.getElementById('quizSection');
+    const importSection = document.getElementById('importSection');
+    
+    if (quizSection && quizSection.style.display !== 'none') {
+        // Hide quiz section and show import section
+        quizSection.style.display = 'none';
+        importSection.classList.remove('hidden');
+        
+        // Reset file input
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Show continue button if we have an active session
+        updateContinueSessionButton();
+        
+        // Show a notification
+        ToastSystem.show('Returned to main menu', 'info');
+        
+        // Note: This doesn't reset the quiz state, just returns to the main screen
+    }
+}
+
+/**
+ * Continue a previously active learning session
+ */
+function continueSession() {
+    // Check if we have saved words in localStorage
+    const savedWords = localStorage.getItem('quizletWords');
+    
+    if (savedWords) {
+        // Simply show the quiz section again
+        showQuizSection();
+        
+        // Update progress and reload the current question
+        updateProgress();
+        loadQuestion();
+        
+        ToastSystem.show('Continuing where you left off', 'success');
+    } else {
+        // No active session found
+        ToastSystem.show('No active session found', 'error');
+        
+        // Hide the continue button
+        const continueSessionContainer = document.getElementById('continueSessionContainer');
+        if (continueSessionContainer) {
+            continueSessionContainer.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Update the continue session button based on the current state
+ */
+function updateContinueSessionButton() {
+    const continueSessionContainer = document.getElementById('continueSessionContainer');
+    const continueSessionInfo = document.getElementById('continueSessionInfo');
+    
+    if (!continueSessionContainer || !continueSessionInfo) return;
+    
+    // Check if we have an active session
+    const savedWords = localStorage.getItem('quizletWords');
+    const savedRound = localStorage.getItem('quizletRound');
+    
+    if (savedWords) {
+        // We have an active session
+        const words = JSON.parse(savedWords);
+        const completed = words.filter(word => word.correct).length;
+        const round = savedRound ? parseInt(savedRound) : 1;
+        
+        // Show container and update info
+        continueSessionContainer.style.display = 'block';
+        continueSessionInfo.textContent = 
+            `Round ${round}: ${completed}/${words.length} terms completed. Continue where you left off!`;
+    } else {
+        // No active session
+        continueSessionContainer.style.display = 'none';
+    }
+}
+
+/**
+ * Reset the application to the overview/main menu
+ */
+function resetToOverview() {
+    // Only perform the reset if we're currently in quiz mode
+    const quizSection = document.getElementById('quizSection');
+    const importSection = document.getElementById('importSection');
+    
+    if (quizSection && quizSection.style.display !== 'none') {
+        // Hide quiz section and show import section
+        quizSection.style.display = 'none';
+        importSection.classList.remove('hidden');
+        
+        // Reset file input
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Show continue button if we have an active session
+        updateContinueSessionButton();
+        
+        // Show a notification
+        ToastSystem.show('Returned to main menu', 'info');
+        
+        // Note: This doesn't reset the quiz state, just returns to the main screen
+    }
+}
+
+/**
+ * Continue a previously active learning session
+ */
+function continueSession() {
+    // Check if we have saved words in localStorage
+    const savedWords = localStorage.getItem('quizletWords');
+    
+    if (savedWords) {
+        // Simply show the quiz section again
+        showQuizSection();
+        
+        // Update progress and reload the current question
+        updateProgress();
+        loadQuestion();
+        
+        ToastSystem.show('Continuing where you left off', 'success');
+    } else {
+        // No active session found
+        ToastSystem.show('No active session found', 'error');
+        
+        // Hide the continue button
+        const continueSessionContainer = document.getElementById('continueSessionContainer');
+        if (continueSessionContainer) {
+            continueSessionContainer.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Update the continue session button based on the current state
+ */
+function updateContinueSessionButton() {
+    const continueSessionContainer = document.getElementById('continueSessionContainer');
+    const continueSessionInfo = document.getElementById('continueSessionInfo');
+    
+    if (!continueSessionContainer || !continueSessionInfo) return;
+    
+    // Check if we have an active session
+    const savedWords = localStorage.getItem('quizletWords');
+    const savedRound = localStorage.getItem('quizletRound');
+    
+    if (savedWords) {
+        // We have an active session
+        const words = JSON.parse(savedWords);
+        const completed = words.filter(word => word.correct).length;
+        const round = savedRound ? parseInt(savedRound) : 1;
+        
+        // Show container and update info
+        continueSessionContainer.style.display = 'block';
+        continueSessionInfo.textContent = 
+            `Round ${round}: ${completed}/${words.length} terms completed. Continue where you left off!`;
+    } else {
+        // No active session
+        continueSessionContainer.style.display = 'none';
+    }
+}
+
+// Add to the existing DOMContentLoaded event listener
+document.addEventListener('DOMContentLoaded', function() {
+    // ...existing code...
+    
+    // Check for active session and update continue button
+    updateContinueSessionButton();
+    
+    // ...existing code...
+});

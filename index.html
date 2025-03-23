@@ -3,36 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Learn</title>
+    <title>📚 Learn</title>
     <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Learn</h1>
+            <h1 id="appTitle" class="clickable" onclick="resetToOverview()">📚 Learn</h1>
             <button class="dark-mode-toggle" id="darkModeToggle">🌙</button>
         </div>
         
         <div id="importSection" class="import-container">
-            <h3>Choose or Create a Study Set</h3>
+            <h3>✨ Choose or Create a Study Set</h3>
+            
+            <!-- Continue learning button - shown only when a session is active -->
+            <div id="continueSessionContainer" class="continue-session" style="display: none;">
+                <button id="continueSessionBtn" class="button button-primary" onclick="continueSession()">
+                    🔄 Continue Learning Session
+                </button>
+                <p class="continue-session-info" id="continueSessionInfo">You have an active learning session.</p>
+            </div>
             
             <div class="tab-container">
                 <div class="tab-buttons">
-                    <button class="tab-button active" onclick="switchTab('import-tab')">Import</button>
-                    <button class="tab-button" onclick="switchTab('create-tab')">Create Set</button>
-                    <button class="tab-button" onclick="switchTab('samples-tab')">Sample Sets</button>
-                    <button class="tab-button" onclick="switchTab('saved-sets-tab')">Saved Sets</button>
+                    <button class="tab-button active" onclick="switchTab('import-tab')">
+                        <span class="icon">📥</span>
+                        <span class="label">Import</span>
+                    </button>
+                    <button class="tab-button" onclick="switchTab('create-tab')">
+                        <span class="icon">✏️</span>
+                        <span class="label">Create Set</span>
+                    </button>
+                    <button class="tab-button" onclick="switchTab('samples-tab')">
+                        <span class="icon">🧩</span>
+                        <span class="label">Samples</span>
+                    </button>
+                    <button class="tab-button" onclick="switchTab('saved-sets-tab')">
+                        <span class="icon">💾</span>
+                        <span class="label">Saved Sets</span>
+                    </button>
                 </div>
                 
                 <div id="import-tab" class="tab-content active">
                     <p>Import a JSON file with your terms:</p>
-                    <input type="file" id="fileInput" accept=".json">
+                    <input type="file" id="fileInput" accept=".json,.txt">
                     <div class="example-format">
                         <p>Expected JSON format:</p>
                         <pre style="text-align:left;">[
   {"term": "hello", "definition": "a greeting", "hint": "h____"},
   {"term": "goodbye", "definition": "a farewell", "hint": "g_____"}
 ]</pre>
+                        <p>Or tab-delimited text:</p>
+                        <pre style="text-align:left;">hello	a greeting	h____
+goodbye	a farewell	g_____</pre>
                     </div>
                 </div>
                 
@@ -43,33 +66,33 @@
                         <input type="text" id="definitionInput" placeholder="Definition (e.g., 'A set of steps to solve a problem')">
                         <input type="text" id="hintInput" placeholder="Hint (optional, e.g., 'a_______m')">
                     </div>
-                    <button class="button button-primary" onclick="addTerm()">Add Term</button>
+                    <button class="button button-primary" onclick="addTerm()">➕ Add Term</button>
                     
                     <div id="termsList">
-                        <p id="noTermsMessage">No terms added yet.</p>
+                        <p id="noTermsMessage">📝 No terms added yet.</p>
                     </div>
                     
                     <div class="creator-controls">
-                        <button class="button button-secondary" onclick="clearTerms()">Clear All</button>
-                        <button class="button button-primary" onclick="saveCurrentSet()">Save Set</button>
-                        <button class="button button-secondary" onclick="exportCreatedSet()">Export as JSON</button>
-                        <button class="button button-primary" onclick="startWithCreatedSet()" id="startCreatedSetBtn" disabled>Start Studying</button>
+                        <button class="button button-secondary" onclick="clearTerms()">🗑️ Clear All</button>
+                        <button class="button button-primary" onclick="saveCurrentSet()">💾 Save Set</button>
+                        <button class="button button-secondary" onclick="exportCreatedSet()">📤 Export as JSON</button>
+                        <button class="button button-primary" onclick="startWithCreatedSet()" id="startCreatedSetBtn" disabled>🚀 Start Studying</button>
                     </div>
                 </div>
                 
                 <div id="samples-tab" class="tab-content">
-                    <p>Choose a pre-made sample set:</p>
+                    <p>🧩 Choose a pre-made sample set:</p>
                     <div class="sample-sets">
-                        <button class="button button-primary" onclick="createSampleSet('programming')">Programming Terms</button>
-                        <button class="button button-primary" onclick="createSampleSet('geography')">Geography</button>
-                        <button class="button button-primary" onclick="createSampleSet('science')">Science Terms</button>
+                        <button class="button button-primary" onclick="createSampleSet('programming')">💻 Programming Terms</button>
+                        <button class="button button-primary" onclick="createSampleSet('geography')">🌍 Geography</button>
+                        <button class="button button-primary" onclick="createSampleSet('science')">🔬 Science Terms</button>
                     </div>
                 </div>
                 
                 <div id="saved-sets-tab" class="tab-content">
-                    <h3>Your Saved Sets</h3>
+                    <h3>💾 Your Saved Sets</h3>
                     <div id="savedSetsList" class="saved-sets-container">
-                        <p>Loading saved sets...</p>
+                        <p>⏳ Loading saved sets...</p>
                     </div>
                 </div>
             </div>
@@ -78,31 +101,31 @@
         <div id="quizSection" style="display:none;">
             <div class="progress-container">
                 <div class="progress-stats">
-                    <span id="progressText">0/0 completed</span>
-                    <span id="scoreDisplay" style="display: none;">Score: 0</span>
-                    <span id="questionCounter">Question: 0/0</span>
+                    <span id="progressText">📊 0/0 completed</span>
+                    <span id="scoreDisplay" style="display: none;">🏆 Score: 0</span>
+                    <span id="questionCounter">❓ Question: 0/0</span>
                 </div>
                 <div class="progress-bar"><div class="progress" id="progress"></div></div>
             </div>
             
             <div class="card" id="questionCard">
                 <div class="prompt"><strong>Term:</strong> <span id="prompt">Loading...</span></div>
-                <div class="hint" id="hint">No hint available</div>
+                <div class="hint" id="hint">💡 No hint available</div>
                 <input type="text" id="answer" placeholder="Type your answer" autocomplete="off">
                 <div id="feedback" class="feedback"></div>
                 <div class="buttons">
-                    <button class="button button-secondary" onclick="showHint()" id="hintBtn">Show hint</button>
-                    <button class="button button-primary" onclick="checkAnswer()" id="submitBtn">Submit</button>
-                    <button class="button button-secondary" onclick="overrideCorrect()" id="overrideBtn" style="display: none;">Mark as correct</button>
-                    <button class="button button-primary" onclick="nextQuestion()" id="nextBtn" style="display: none;">Next Question</button>
-                    <button class="button button-secondary" onclick="skipQuestion()" id="skipBtn">Skip</button>
+                    <button class="button button-secondary" onclick="showHint()" id="hintBtn">💡 Show hint</button>
+                    <button class="button button-primary" onclick="checkAnswer()" id="submitBtn">✅ Submit</button>
+                    <button class="button button-secondary" onclick="overrideCorrect()" id="overrideBtn" style="display: none;">✓ Mark as correct</button>
+                    <button class="button button-primary" onclick="nextQuestion()" id="nextBtn" style="display: none;">➡️ Next Question</button>
+                    <button class="button button-secondary" onclick="skipQuestion()" id="skipBtn">⏭️ Skip</button>
                 </div>
             </div>
             
             <div class="quiz-controls">
-                <button class="button button-primary" onclick="retryIncorrect()" id="retryBtn" style="display: none;">Retry Incorrect Words</button>
-                <button class="button button-primary" onclick="restartWithWrongAnswers()" id="restartWithWrongBtn" style="display: none;">Restart with Wrong Answers</button>
-                <button class="button button-secondary" onclick="resetQuiz()" id="resetBtn">Reset Quiz</button>
+                <button class="button button-primary" onclick="retryIncorrect()" id="retryBtn" style="display: none;">🔄 Retry Incorrect Words</button>
+                <button class="button button-primary" onclick="restartWithWrongAnswers()" id="restartWithWrongBtn" style="display: none;">🔁 Restart with Wrong Answers</button>
+                <button class="button button-secondary" onclick="resetQuiz()" id="resetBtn">🔄 Reset Quiz</button>
             </div>
         </div>
     </div>
@@ -111,15 +134,15 @@
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-dialog" id="modalDialog">
             <div class="modal-header">
-                <h3 id="modalTitle">Dialog Title</h3>
+                <h3 id="modalTitle">💬 Dialog Title</h3>
             </div>
             <div class="modal-body">
                 <p id="modalMessage">Dialog message goes here</p>
                 <input type="text" id="modalInput" class="modal-input" style="display: none;">
             </div>
             <div class="modal-footer">
-                <button id="modalCancelBtn" class="button button-secondary">Cancel</button>
-                <button id="modalConfirmBtn" class="button button-primary">OK</button>
+                <button id="modalCancelBtn" class="button button-secondary">❌ Cancel</button>
+                <button id="modalConfirmBtn" class="button button-primary">✅ OK</button>
             </div>
         </div>
     </div>
