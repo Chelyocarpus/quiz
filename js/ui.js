@@ -21,12 +21,12 @@ async function showSharedSetDialog(shareData) {
     
     try {
         // Create a more visually appealing dialog
-        DialogSystem.elements.title.textContent = '📥 Shared Set Received';
+        DialogSystem.elements.title.textContent = 'Shared Set Received';
         
         // Get a sample of terms to show (up to 3), but only show the terms
         const sampleTerms = shareData.terms.slice(0, 3).map(t => 
             `<div class="sample-term">
-                <strong>${t.term}</strong>
+                <strong>${escapeHTML(t.term)}</strong>
             </div>`
         ).join('');
         
@@ -36,9 +36,9 @@ async function showSharedSetDialog(shareData) {
         DialogSystem.elements.message.innerHTML = `
             <div class="shared-set-preview">
                 <div class="preview-header">
-                    <div class="preview-icon">📚</div>
+                    <div class="preview-icon"><i data-lucide="book-open"></i></div>
                     <div class="preview-title">
-                        <strong>${setName}</strong>
+                        <strong>${escapeHTML(setName)}</strong>
                         <span>${termCount} terms</span>
                     </div>
                 </div>
@@ -126,14 +126,6 @@ async function showSharedSetDialog(shareData) {
                 justify-content: space-between;
                 width: 100%;
             }
-            .modal-dialog {
-                animation: bounceIn 0.5s;
-            }
-            @keyframes bounceIn {
-                0% { transform: scale(0.8); opacity: 0; }
-                70% { transform: scale(1.05); }
-                100% { transform: scale(1); opacity: 1; }
-            }
         `;
         
         // Append styles to the document head
@@ -157,17 +149,17 @@ async function showSharedSetDialog(shareData) {
         
         // Update button styling
         DialogSystem.elements.cancelBtn.style.display = 'inline-block';
-        DialogSystem.elements.cancelBtn.textContent = '❌ Close';
+        DialogSystem.elements.cancelBtn.textContent = 'Close';
         DialogSystem.elements.cancelBtn.className = 'button button-secondary';
         
-        DialogSystem.elements.confirmBtn.textContent = '🚀 Study Now';
+        DialogSystem.elements.confirmBtn.textContent = 'Study Now';
         DialogSystem.elements.confirmBtn.className = 'button button-primary';
         
         // Create a new save button
         const saveButton = document.createElement('button');
         saveButton.className = 'button button-primary';
-        saveButton.innerHTML = '<span style="margin-right:4px;">💾</span> Save Set';
-        saveButton.style.marginRight = '10px';
+        saveButton.textContent = 'Save Set';
+        saveButton.style.marginRight = 'var(--space-2)';
         
         // Create a custom button container
         const buttonContainer = document.createElement('div');
@@ -180,7 +172,7 @@ async function showSharedSetDialog(shareData) {
         // Create right side of buttons
         const rightButtons = document.createElement('div');
         rightButtons.style.display = 'flex';
-        rightButtons.style.gap = '10px';
+        rightButtons.style.gap = 'var(--space-2)';
         rightButtons.appendChild(saveButton);
         rightButtons.appendChild(DialogSystem.elements.confirmBtn);
         
@@ -369,7 +361,9 @@ async function loadSavedSet(name) {
     
     // Load the terms into createdTerms
     createdTerms = [...savedSets[name].terms];
+    currentEditingSetName = name;
     updateTermsList();
+    updateCreateTabBanner();
     
     // Switch to the create tab
     switchTab('create-tab');
@@ -408,7 +402,7 @@ async function exportSavedSet(name) {
 }
 
 async function deleteSavedSet(name) {
-    const confirmed = await showConfirm(`Are you sure you want to delete the set "${name}"?`, 'Delete Set');
+    const confirmed = await showDeleteConfirm(`Are you sure you want to delete the set "${name}"?`, 'Delete Set');
     
     if (!confirmed) {
         return;
@@ -472,6 +466,8 @@ const DialogSystem = {
             this.elements.input.style.display = 'none';
             this.elements.cancelBtn.style.display = 'none';
             this.elements.confirmBtn.textContent = 'OK';
+            this.elements.confirmBtn.classList.remove('button-danger');
+            this.elements.confirmBtn.classList.add('button-primary');
             
             this.elements.confirmBtn.onclick = () => this.close(true);
             
@@ -491,10 +487,56 @@ const DialogSystem = {
             this.elements.cancelBtn.style.display = 'inline-block';
             this.elements.cancelBtn.textContent = 'Cancel';
             this.elements.confirmBtn.textContent = 'OK';
+            this.elements.confirmBtn.classList.remove('button-danger');
+            this.elements.confirmBtn.classList.add('button-primary');
             
             this.elements.cancelBtn.onclick = () => this.close(false);
             this.elements.confirmBtn.onclick = () => this.close(true);
             
+            this.open();
+        });
+    },
+
+    // Show delete confirmation dialog with danger styling
+    confirmDelete(message, title = 'Confirm Delete') {
+        return new Promise((resolve) => {
+            this.init();
+            this.resolvePromise = resolve;
+
+            this.elements.title.textContent = title;
+            this.elements.message.textContent = message;
+            this.elements.input.style.display = 'none';
+            this.elements.cancelBtn.style.display = 'inline-block';
+            this.elements.cancelBtn.textContent = 'Cancel';
+            this.elements.confirmBtn.textContent = 'Delete';
+            this.elements.confirmBtn.classList.remove('button-primary');
+            this.elements.confirmBtn.classList.add('button-danger');
+
+            this.elements.cancelBtn.onclick = () => this.close(false);
+            this.elements.confirmBtn.onclick = () => this.close(true);
+
+            this.open();
+        });
+    },
+
+    // Show discard confirmation dialog with danger styling
+    confirmDiscard(message, title = 'Confirm') {
+        return new Promise((resolve) => {
+            this.init();
+            this.resolvePromise = resolve;
+
+            this.elements.title.textContent = title;
+            this.elements.message.textContent = message;
+            this.elements.input.style.display = 'none';
+            this.elements.cancelBtn.style.display = 'inline-block';
+            this.elements.cancelBtn.textContent = 'Cancel';
+            this.elements.confirmBtn.textContent = 'Discard';
+            this.elements.confirmBtn.classList.remove('button-primary');
+            this.elements.confirmBtn.classList.add('button-danger');
+
+            this.elements.cancelBtn.onclick = () => this.close(false);
+            this.elements.confirmBtn.onclick = () => this.close(true);
+
             this.open();
         });
     },
@@ -562,7 +604,10 @@ const ToastSystem = {
         toast.className = `toast ${type}`;
         
         // Set content
-        toast.innerHTML = `<div class="toast-message">${message}</div>`;
+        const toastMsg = document.createElement('div');
+        toastMsg.className = 'toast-message';
+        toastMsg.textContent = message;
+        toast.appendChild(toastMsg);
         
         // Add to container
         container.appendChild(toast);
@@ -588,6 +633,16 @@ async function showConfirm(message, title = 'Confirm') {
     return await DialogSystem.confirm(message, title);
 }
 
+// Show a delete confirmation dialog with danger-styled button
+async function showDeleteConfirm(message, title = 'Confirm Delete') {
+    return await DialogSystem.confirmDelete(message, title);
+}
+
+// Show a discard confirmation dialog with danger-styled "Discard" button
+async function showDiscardConfirm(message, title = 'Confirm') {
+    return await DialogSystem.confirmDiscard(message, title);
+}
+
 // Replace existing prompt function
 async function showPrompt(message, defaultValue = '', title = 'Input Required') {
     return await DialogSystem.prompt(message, defaultValue, title);
@@ -597,28 +652,26 @@ async function showPrompt(message, defaultValue = '', title = 'Input Required') 
  * Reset the application to the overview/main menu
  */
 function resetToOverview() {
-    // Only perform the reset if we're currently in quiz mode
     const quizSection = document.getElementById('quizSection');
     const importSection = document.getElementById('importSection');
-    
-    if (quizSection && quizSection.style.display !== 'none') {
-        // Hide quiz section and show import section
-        quizSection.style.display = 'none';
-        importSection.classList.remove('hidden');
-        
-        // Reset file input
-        const fileInput = document.getElementById('fileInput');
-        if (fileInput) {
-            fileInput.value = '';
-        }
-        
-        // Show continue button if we have an active session
-        updateContinueSessionButton();
-        
-        // Show a notification
+
+    if (!quizSection || !importSection) return;
+
+    const wasInQuiz = quizSection.style.display !== '' && quizSection.style.display !== 'none';
+
+    quizSection.style.display = 'none';
+    importSection.classList.remove('hidden');
+
+    // Always navigate back to My Sets tab so the "home" state is consistent
+    switchTab('saved-sets-tab');
+
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) fileInput.value = '';
+
+    updateContinueSessionButton();
+
+    if (wasInQuiz) {
         ToastSystem.show('Returned to main menu', 'info');
-        
-        // Note: This doesn't reset the quiz state, just returns to the main screen
     }
 }
 
