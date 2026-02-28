@@ -3,57 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📚 Learn</title>
-    <link rel="stylesheet" href="./styles.css">
+    <title>Learn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="./css/styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <!-- Add LZString for compression -->
     <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1 id="appTitle" class="clickable" onclick="resetToOverview()">📚 Learn</h1>
-            <button class="dark-mode-toggle" id="darkModeToggle">🌙</button>
+            <h1 id="appTitle" class="clickable" onclick="resetToOverview()"><i data-lucide="book-open" class="title-icon"></i> Learn</h1>
+            <button class="dark-mode-toggle" id="darkModeToggle" aria-label="Toggle dark mode"><i data-lucide="moon"></i></button>
         </div>
         
         <div id="importSection" class="import-container">
-            <h3>✨ Choose or Create a Study Set</h3>
+            <h3>Choose or Create a Study Set</h3>
             
             <!-- Continue learning button - shown only when a session is active -->
-            <div id="continueSessionContainer" class="continue-session" style="display: none;">
+            <div id="continueSessionContainer" class="continue-session hidden">
                 <button id="continueSessionBtn" class="button button-primary" onclick="continueSession()">
-                    🔄 Continue Learning Session
+                    <i data-lucide="refresh-cw"></i> Continue Learning Session
                 </button>
                 <p class="continue-session-info" id="continueSessionInfo">You have an active learning session.</p>
             </div>
             
             <div class="tab-container">
                 <div class="tab-buttons">
-                    <button class="tab-button active" onclick="switchTab('import-tab')">
-                        <span class="icon">📥</span>
-                        <span class="label">Import</span>
+                    <button class="tab-button active" onclick="switchTab('saved-sets-tab')">
+                        <span class="icon"><i data-lucide="bookmark"></i></span>
+                        <span class="label">My Sets</span>
                     </button>
                     <button class="tab-button" onclick="switchTab('create-tab')">
-                        <span class="icon">✏️</span>
-                        <span class="label">Create Set</span>
+                        <span class="icon"><i data-lucide="pencil"></i></span>
+                        <span class="label">Create</span>
+                    </button>
+                    <button class="tab-button" onclick="switchTab('import-tab')">
+                        <span class="icon"><i data-lucide="download"></i></span>
+                        <span class="label">Import</span>
                     </button>
                     <button class="tab-button" onclick="switchTab('samples-tab')">
-                        <span class="icon">🧩</span>
+                        <span class="icon"><i data-lucide="layout-grid"></i></span>
                         <span class="label">Samples</span>
                     </button>
-                    <button class="tab-button" onclick="switchTab('saved-sets-tab')">
-                        <span class="icon">💾</span>
-                        <span class="label">Saved Sets</span>
-                    </button>
                 </div>
-                
-                <div id="import-tab" class="tab-content active">
+
+                <div id="saved-sets-tab" class="tab-content active">
+                    <div class="saved-sets-header" id="savedSetsHeader"></div>
+                    <div id="savedSetsList" class="saved-sets-container list-view">
+                        <p>Loading saved sets...</p>
+                    </div>
+                </div>
+
+                <div id="create-tab" class="tab-content">
+                    <div id="createTabBanner" class="create-tab-banner hidden">
+                        <i data-lucide="pencil-line"></i>
+                        <span>Editing:</span>
+                        <strong id="editingSetNameLabel"></strong>
+                        <button class="banner-new-btn" onclick="newSet()" title="Discard and start a new set"><i data-lucide="plus"></i> New Set</button>
+                    </div>
+                    <div class="form-row">
+                        <input type="text" id="termInput" placeholder="Term">
+                        <input type="text" id="hintInput" placeholder="Hint (optional)" class="hidden">
+                        <input type="text" id="definitionInput" placeholder="Definition">
+                    </div>
+                    <div class="form-actions">
+                        <button class="hint-toggle" id="hintToggle" type="button" onclick="toggleHintInput()"><i data-lucide="lightbulb"></i> Add hint</button>
+                        <div class="form-actions-right">
+                            <button class="button button-primary" onclick="addTerm()" id="addTermBtn"><i data-lucide="plus"></i> Add Term</button>
+                            <button class="button button-secondary hidden" id="cancelEditBtn" onclick="cancelEdit()"><i data-lucide="x"></i> Cancel Edit</button>
+                        </div>
+                    </div>
+
+                    <div id="termsList">
+                        <p id="noTermsMessage">No terms added yet.</p>
+                    </div>
+
+                    <div class="creator-controls">
+                        <button class="button button-secondary" onclick="backToSets()"><i data-lucide="arrow-left"></i> My Sets</button>
+                        <button class="button button-secondary" onclick="clearTerms()"><i data-lucide="trash-2"></i> Clear All</button>
+                        <button class="button button-primary" onclick="saveCurrentSet()"><i data-lucide="save"></i> Save Set</button>
+                        <button class="button button-secondary" onclick="exportCreatedSet()"><i data-lucide="upload"></i> Export as JSON</button>
+                        <button class="button button-primary" onclick="startWithCreatedSet()" id="startCreatedSetBtn" disabled><i data-lucide="play-circle"></i> Start Studying</button>
+                    </div>
+                </div>
+
+                <div id="import-tab" class="tab-content">
                     <div class="import-methods">
                         <div class="import-method">
-                            <h4>Import from File</h4>
-                            <input type="file" id="fileInput" accept=".json,.txt">
+                            <h4><i data-lucide="hard-drive"></i> Import from File</h4>
+                            <div class="drop-zone" id="dropZone">
+                                <i data-lucide="upload-cloud" class="drop-zone-icon"></i>
+                                <p class="drop-zone-text">Drop your file here</p>
+                                <p class="drop-zone-sub">or</p>
+                                <label for="fileInput" class="button button-secondary drop-zone-btn">
+                                    <i data-lucide="folder-open"></i> Browse Files
+                                </label>
+                                <input type="file" id="fileInput" accept=".json,.txt" class="hidden">
+                                <p class="drop-zone-formats">.json &nbsp;&middot;&nbsp; .txt (tab-delimited)</p>
+                            </div>
                         </div>
                         <div class="import-method">
-                            <h4>Import from Link</h4>
+                            <h4><i data-lucide="link"></i> Import from Link</h4>
                             <div class="link-import">
                                 <input type="text" id="linkInput" placeholder="Paste a shared set link here">
                                 <button class="button button-primary" onclick="importFromLink()">Import</button>
@@ -62,88 +115,56 @@
                     </div>
                     <div class="format-help">
                         <button class="info-button" onclick="toggleFormatHelp()">
-                            ℹ️ Show Format Examples
+                            <i data-lucide="info"></i> Show Format Examples
                         </button>
-                        <div id="formatExamples" class="info-content" style="display: none;">
+                        <div id="formatExamples" class="info-content hidden">
                             <p>Expected JSON format:</p>
-                            <pre>[
-  {"term": "hello", "definition": "a greeting", "hint": "h____"},
-  {"term": "goodbye", "definition": "a farewell", "hint": "g_____"}
-]</pre>
+                            <pre>[\n  {"term": "hello", "definition": "a greeting", "hint": "h____"},\n  {"term": "goodbye", "definition": "a farewell", "hint": "g_____"}\n]</pre>
                             <p>Or tab-delimited text:</p>
-                            <pre>hello	a greeting	h____
-goodbye	a farewell	g_____</pre>
+                            <pre>hello	a greeting	h____\ngoodbye	a farewell	g_____</pre>
                         </div>
                     </div>
                 </div>
-                
-                <div id="create-tab" class="tab-content">
-                    <p>Create your own set by adding terms and definitions:</p>
-                    <div class="form-row">
-                        <input type="text" id="termInput" placeholder="Term (e.g., 'algorithm')">
-                        <input type="text" id="definitionInput" placeholder="Definition (e.g., 'A set of steps to solve a problem')">
-                        <input type="text" id="hintInput" placeholder="Hint (optional, e.g., 'a_______m')">
-                    </div>
-                    <button class="button button-primary" onclick="addTerm()">➕ Add Term</button>
-                    
-                    <div id="termsList">
-                        <p id="noTermsMessage">📝 No terms added yet.</p>
-                    </div>
-                    
-                    <div class="creator-controls">
-                        <button class="button button-secondary" onclick="clearTerms()">🗑️ Clear All</button>
-                        <button class="button button-primary" onclick="saveCurrentSet()">💾 Save Set</button>
-                        <button class="button button-secondary" onclick="exportCreatedSet()">📤 Export as JSON</button>
-                        <button class="button button-primary" onclick="startWithCreatedSet()" id="startCreatedSetBtn" disabled>🚀 Start Studying</button>
-                    </div>
-                </div>
-                
+
                 <div id="samples-tab" class="tab-content">
-                    <p>🧩 Choose a pre-made sample set:</p>
+                    <p>Choose a pre-made sample set:</p>
                     <div class="sample-sets">
-                        <button class="button button-primary" onclick="createSampleSet('programming')">💻 Programming Terms</button>
-                        <button class="button button-primary" onclick="createSampleSet('geography')">🌍 Geography</button>
-                        <button class="button button-primary" onclick="createSampleSet('science')">🔬 Science Terms</button>
-                    </div>
-                </div>
-                
-                <div id="saved-sets-tab" class="tab-content">
-                    <h3>💾 Your Saved Sets</h3>
-                    <div id="savedSetsList" class="saved-sets-container">
-                        <p>⏳ Loading saved sets...</p>
+                        <button class="button button-primary" onclick="createSampleSet('programming')"><i data-lucide="code-2"></i> Programming Terms</button>
+                        <button class="button button-primary" onclick="createSampleSet('geography')"><i data-lucide="globe"></i> Geography</button>
+                        <button class="button button-primary" onclick="createSampleSet('science')"><i data-lucide="microscope"></i> Science Terms</button>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div id="quizSection" style="display:none;">
+        <div id="quizSection" class="hidden">
             <div class="progress-container">
                 <div class="progress-stats">
-                    <span id="progressText">📊 0/0 completed</span>
-                    <span id="scoreDisplay" style="display: none;">🏆 Score: 0</span>
-                    <span id="questionCounter">❓ Question: 0/0</span>
+                    <span id="progressText">0/0 completed</span>
+                    <span id="scoreDisplay" class="hidden">Score: 0</span>
+                    <span id="questionCounter">Question: 0/0</span>
                 </div>
                 <div class="progress-bar"><div class="progress" id="progress"></div></div>
             </div>
             
             <div class="card" id="questionCard">
                 <div class="prompt"><strong>Term:</strong> <span id="prompt">Loading...</span></div>
-                <div class="hint" id="hint">💡 No hint available</div>
+                <div class="hint" id="hint">No hint available</div>
                 <input type="text" id="answer" placeholder="Type your answer" autocomplete="off">
                 <div id="feedback" class="feedback"></div>
                 <div class="buttons">
-                    <button class="button button-secondary" onclick="showHint()" id="hintBtn">💡 Show hint</button>
-                    <button class="button button-primary" onclick="checkAnswer()" id="submitBtn">✅ Submit</button>
-                    <button class="button button-secondary" onclick="overrideCorrect()" id="overrideBtn" style="display: none;">✓ Mark as correct</button>
-                    <button class="button button-primary" onclick="nextQuestion()" id="nextBtn" style="display: none;">➡️ Next Question</button>
-                    <button class="button button-secondary" onclick="skipQuestion()" id="skipBtn">⏭️ Skip</button>
+                    <button class="button button-secondary" onclick="showHint()" id="hintBtn"><i data-lucide="lightbulb"></i> Show hint</button>
+                    <button class="button button-primary" onclick="checkAnswer()" id="submitBtn"><i data-lucide="check-circle"></i> Submit</button>
+                    <button id="overrideBtn" onclick="overrideCorrect()" class="button button-secondary hidden"><i data-lucide="check"></i> Mark as correct</button>
+                    <button id="nextBtn" onclick="nextQuestion()" class="button button-primary hidden">Next Question <i data-lucide="arrow-right"></i></button>
+                    <button class="button button-secondary" onclick="skipQuestion()" id="skipBtn"><i data-lucide="skip-forward"></i> Skip</button>
                 </div>
             </div>
             
             <div class="quiz-controls">
-                <button class="button button-primary" onclick="retryIncorrect()" id="retryBtn" style="display: none;">🔄 Retry Incorrect Words</button>
-                <button class="button button-primary" onclick="restartWithWrongAnswers()" id="restartWithWrongBtn" style="display: none;">🔁 Restart with Wrong Answers</button>
-                <button class="button button-secondary" onclick="resetQuiz()" id="resetBtn">🔄 Reset Quiz</button>
+                <button id="retryBtn" onclick="retryIncorrect()" class="button button-primary hidden"><i data-lucide="refresh-cw"></i> Retry Incorrect</button>
+                <button id="restartWithWrongBtn" onclick="restartWithWrongAnswers()" class="button button-primary hidden"><i data-lucide="repeat"></i> Restart with Wrong Answers</button>
+                <button class="button button-secondary" onclick="resetQuiz()" id="resetBtn"><i data-lucide="rotate-ccw"></i> Reset Quiz</button>
             </div>
         </div>
     </div>
@@ -152,15 +173,15 @@ goodbye	a farewell	g_____</pre>
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-dialog" id="modalDialog">
             <div class="modal-header">
-                <h3 id="modalTitle">💬 Dialog Title</h3>
+                <h3 id="modalTitle">Dialog</h3>
             </div>
             <div class="modal-body">
                 <p id="modalMessage">Dialog message goes here</p>
-                <input type="text" id="modalInput" class="modal-input" style="display: none;">
+                <input type="text" id="modalInput" class="modal-input hidden" title="Dialog input">
             </div>
             <div class="modal-footer">
-                <button id="modalCancelBtn" class="button button-secondary">❌ Cancel</button>
-                <button id="modalConfirmBtn" class="button button-primary">✅ OK</button>
+                <button id="modalCancelBtn" class="button button-secondary">Cancel</button>
+                <button id="modalConfirmBtn" class="button button-primary">OK</button>
             </div>
         </div>
     </div>
@@ -168,9 +189,11 @@ goodbye	a farewell	g_____</pre>
     <!-- Toast Notifications -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="./script.js"></script>
-    <script src="./script2.js"></script>
-    <script src="./script3.js"></script>
-    <script src="./script4.js"></script>
+    <script src="./js/main.js"></script>
+    <script src="./js/quiz-engine.js"></script>
+    <script src="./js/storage.js"></script>
+    <script src="./js/ui.js"></script>
+    <script>lucide.createIcons();</script>
+    <script src="./js/animations.js"></script>
 </body>
 </html>

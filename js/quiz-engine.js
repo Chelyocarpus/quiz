@@ -45,7 +45,7 @@ function showRoundSummary(isFinal = false) {
         roundSummary.innerHTML = `
             <h2>Quiz Completed!</h2>
             <div class="stats">
-                <p>All words completed! 🎉</p>
+                <p>All words completed!</p>
                 <p>Total correct: ${completedTerms}/${totalTerms} (${percentage}%)</p>
                 <p>Total rounds completed: ${currentRound}</p>
             </div>

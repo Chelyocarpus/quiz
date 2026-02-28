@@ -1,3 +1,18 @@
+/**
+ * Escape special HTML characters to prevent XSS when set names are
+ * rendered inside template literals with innerHTML.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHTML(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Update the saveToLocalStorage function to save the totalCorrect value
 function saveToLocalStorage() {
     localStorage.setItem('quizletWords', JSON.stringify(words));
@@ -231,7 +246,8 @@ async function saveCurrentSet() {
         return;
     }
     
-    const setName = await showPrompt('Enter a name for this set:', '', 'Save Study Set');
+    const defaultName = currentEditingSetName || '';
+    const setName = await showPrompt('Enter a name for this set:', defaultName, 'Save Study Set');
     if (!setName) return; // User cancelled
     
     // Get existing saved sets or initialize empty object
@@ -243,8 +259,10 @@ async function saveCurrentSet() {
         timestamp: new Date().toISOString()
     };
     
-    // Update localStorage
+    // Update localStorage and the tracked name
     localStorage.setItem('quizletSavedSets', JSON.stringify(savedSets));
+    currentEditingSetName = setName;
+    updateCreateTabBanner();
     ToastSystem.show(`Set "${setName}" saved successfully!`, 'success');
     
     // Refresh the saved sets list if visible
@@ -283,40 +301,82 @@ function exportCreatedSet() {
 function loadSavedSets() {
     const savedSetsContainer = document.getElementById('savedSetsList');
     if (!savedSetsContainer) return;
-    
+
     const savedSets = JSON.parse(localStorage.getItem('quizletSavedSets') || '{}');
-    
-    if (Object.keys(savedSets).length === 0) {
-        savedSetsContainer.innerHTML = '<p>No saved sets found. Create and save a set first.</p>';
+    const entries   = Object.entries(savedSets);
+
+    // Render the toggle header
+    const headerEl = document.getElementById('savedSetsHeader');
+    if (headerEl) {
+        const currentView = localStorage.getItem('savedSetsView') || 'list';
+        headerEl.innerHTML = entries.length === 0 ? '' : `
+            <span class="saved-sets-count">${entries.length} set${entries.length !== 1 ? 's' : ''}</span>
+            <div class="view-toggle" role="group" aria-label="View mode">
+                <button class="view-toggle-btn${currentView === 'list' ? ' active' : ''}" onclick="setSetsView('list')" title="List view" aria-pressed="${currentView === 'list'}">
+                    <i data-lucide="list"></i>
+                </button>
+                <button class="view-toggle-btn${currentView === 'grid' ? ' active' : ''}" onclick="setSetsView('grid')" title="Grid view" aria-pressed="${currentView === 'grid'}">
+                    <i data-lucide="layout-grid"></i>
+                </button>
+            </div>`;
+        lucide.createIcons();
+    }
+
+    if (entries.length === 0) {
+        savedSetsContainer.className = 'saved-sets-container';
+        savedSetsContainer.innerHTML = `
+            <div class="saved-sets-empty">
+                <i data-lucide="inbox"></i>
+                <p>No saved sets yet.</p>
+                <button class="button button-primary" onclick="switchTab('create-tab')"><i data-lucide="plus"></i> Create a Set</button>
+            </div>`;
+        lucide.createIcons();
         return;
     }
-    
+
+    const view = localStorage.getItem('savedSetsView') || 'list';
+    savedSetsContainer.className = `saved-sets-container ${view}-view`;
+
     let html = '';
-    for (const [name, data] of Object.entries(savedSets)) {
+    for (const [name, data] of entries) {
         const termCount = data.terms.length;
-        const date = new Date(data.timestamp).toLocaleDateString();
-        
+        const date      = new Date(data.timestamp).toLocaleDateString();
+        const safeName  = escapeHTML(name);
+        // Single-quote-safe JS string for onclick attributes
+        const jsName    = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
         html += `
         <div class="saved-set-item">
             <div class="saved-set-info">
-                <h4>${name}</h4>
-                <p>${termCount} terms · Saved on ${date}</p>
+                <span class="saved-set-badge"><i data-lucide="layers"></i> ${termCount}</span>
+                <h4>${safeName}</h4>
+                <p>${date}</p>
             </div>
             <div class="saved-set-actions">
                 <div class="primary-actions">
-                    <button onclick="startStudyingSet('${name}')" class="button button-small button-primary">🚀 Study</button>
-                    <button onclick="shareSet('${name}')" class="button button-small button-primary">🔗 Share</button>
+                    <button onclick="startStudyingSet('${jsName}')" class="button button-primary"><i data-lucide="play-circle"></i> Study</button>
+                    <button onclick="shareSet('${jsName}')" class="button button-small button-share" title="Share"><i data-lucide="link"></i></button>
                 </div>
                 <div class="secondary-actions">
-                    <button onclick="loadSavedSet('${name}')" class="button button-small">✏️ Edit</button>
-                    <button onclick="exportSavedSet('${name}')" class="button button-small">📤 Export</button>
-                    <button onclick="deleteSavedSet('${name}')" class="button button-small button-danger">🗑️ Delete</button>
+                    <button onclick="loadSavedSet('${jsName}')" class="button button-small" title="Edit"><i data-lucide="pencil"></i></button>
+                    <button onclick="exportSavedSet('${jsName}')" class="button button-small" title="Export"><i data-lucide="upload"></i></button>
+                    <button onclick="deleteSavedSet('${jsName}')" class="button button-small button-danger" title="Delete"><i data-lucide="trash-2"></i></button>
                 </div>
             </div>
         </div>`;
     }
-    
+
     savedSetsContainer.innerHTML = html;
+    lucide.createIcons();
+}
+
+/**
+ * Switch the saved-sets display between 'list' and 'grid' views.
+ * @param {'list'|'grid'} view
+ */
+function setSetsView(view) {
+    localStorage.setItem('savedSetsView', view);
+    loadSavedSets();
 }
 
 /**
@@ -507,34 +567,39 @@ function updateTermsList() {
     const startButton = document.getElementById('startCreatedSetBtn');
     
     if (createdTerms.length === 0) {
-        termsList.innerHTML = '<p id="noTermsMessage">📝 No terms added yet.</p>';
+        termsList.innerHTML = '<p id="noTermsMessage"><i data-lucide="file-plus"></i> No terms added yet.</p>';
+        lucide.createIcons();
         startButton.disabled = true;
         return;
     }
     
     startButton.disabled = false;
-    
-    // Clear the list first
-    termsList.innerHTML = '';
-    
+
+    termsList.innerHTML = `
+        <div class="terms-header">
+            <span class="terms-col-num">#</span>
+            <span class="terms-col-term">Term</span>
+            <span class="terms-col-def">Definition</span>
+            <span class="terms-col-actions"></span>
+        </div>
+    `;
+
     createdTerms.forEach((item, index) => {
         const termElement = document.createElement('div');
         termElement.className = 'term-item';
         termElement.ondblclick = () => editTerm(index);
+        const hintTag = item.hint
+            ? `<span class="hint-tag" title="Hint: ${escapeHTML(item.hint)}"><i data-lucide="lightbulb"></i></span>`
+            : '';
         termElement.innerHTML = `
-            <div class="term-content">
-                <span class="term-number">${index + 1}.</span>
-                <div class="term-text">
-                    <div class="term-label">Term:</div>
-                    <div class="term-value">${item.term}</div>
-                    <div class="definition-label">Definition:</div>
-                    <div class="definition-value">${item.definition}</div>
-                </div>
-            </div>
-            <div class="term-actions">
-                <button onclick="editTerm(${index})" title="Edit (double-click term)">✏️</button>
-                <button onclick="deleteTerm(${index})" title="Delete">❌</button>
-            </div>`;
+            <span class="terms-col-num">${index + 1}</span>
+            <span class="terms-col-term">${escapeHTML(item.term)}</span>
+            <span class="terms-col-def">${escapeHTML(item.definition)}${hintTag}</span>
+            <span class="term-actions">
+                <button class="edit-btn" onclick="editTerm(${index})" title="Edit (double-click to edit)"><i data-lucide="pencil"></i></button>
+                <button class="delete-btn" onclick="deleteTerm(${index})" title="Delete"><i data-lucide="trash-2"></i></button>
+            </span>`;
         termsList.appendChild(termElement);
     });
+    lucide.createIcons();
 }
